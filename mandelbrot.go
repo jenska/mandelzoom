@@ -21,7 +21,6 @@ const (
 
 type Mandelbrot struct {
 	duration     time.Duration
-	offscreen    *ebiten.Image
 	offscreenPix []byte
 	palette      []color.RGBA
 	zoom         float64
@@ -29,7 +28,6 @@ type Mandelbrot struct {
 
 func NewMandelbrot() *Mandelbrot {
 	result := &Mandelbrot{}
-	result.offscreen, _ = ebiten.NewImage(screenWidth, screenHeight, ebiten.FilterDefault)
 	result.offscreenPix = make([]byte, screenWidth*screenHeight*4)
 	result.palette = make([]color.RGBA, len(palette.Plan9))
 	for i := range palette.Plan9 {
@@ -82,7 +80,6 @@ func (m *Mandelbrot) updateOffscreen(centerX, centerY, size float64) {
 		}(j)
 	}
 	wg.Wait()
-	m.offscreen.ReplacePixels(m.offscreenPix)
 	m.duration = time.Since(start)
 }
 
@@ -93,7 +90,7 @@ func (m *Mandelbrot) Update(screen *ebiten.Image) error {
 }
 
 func (m *Mandelbrot) Draw(screen *ebiten.Image) {
-	screen.DrawImage(m.offscreen, nil)
+	screen.ReplacePixels(m.offscreenPix)
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("%d ms %.2f fps", m.duration/time.Millisecond, ebiten.CurrentFPS()))
 }
 
