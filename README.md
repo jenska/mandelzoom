@@ -1,8 +1,15 @@
 # mandelzoom
 Ebiten Mandelbrot realtime zoom in Go
 
-Just type
+## Run
 ```bash
-go run mandelbrot.go
+make run
 ```
-and see.
+
+## Make targets
+- `make build` - build binary to `bin/mandelzoom`
+- `make run` - run the application
+- `make tidy` - tidy Go modules
+- `make fmt` - format Go source files
+- `make test` - run tests
+- `make clean` - remove build artifacts

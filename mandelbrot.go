@@ -6,6 +6,7 @@ import (
 	"image/color/palette"
 	_ "image/png"
 	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -56,29 +57,45 @@ func iter(cx, cy float64) int {
 
 func (m *Mandelbrot) updateOffscreen(centerX, centerY, size float64) {
 	start := time.Now()
+
+	workerCount := runtime.GOMAXPROCS(0)
+	if workerCount < 1 {
+		workerCount = 1
+	}
+
+	rowJobs := make(chan int, screenHeight)
 	var wg sync.WaitGroup
-	for j := 0; j < screenHeight; j++ {
+
+	for w := 0; w < workerCount; w++ {
 		wg.Add(1)
-		go func(j int) {
+		go func() {
 			defer wg.Done()
-			for i := 0; i < screenHeight; i++ {
-				it := iter(float64(i)*size/screenWidth-size/2+centerX, (screenHeight-float64(j))*size/screenHeight-size/2+centerY)
-				p := 4 * (i + j*screenWidth)
-				if it < maxIt {
-					rgba := m.palette[it]
-					m.offscreenPix[p] = rgba.R
-					m.offscreenPix[p+1] = rgba.G
-					m.offscreenPix[p+2] = rgba.B
-					m.offscreenPix[p+3] = rgba.A
-				} else {
-					m.offscreenPix[p] = 0
-					m.offscreenPix[p+1] = 0
-					m.offscreenPix[p+2] = 0
-					m.offscreenPix[p+3] = 0
+			for j := range rowJobs {
+				for i := 0; i < screenWidth; i++ {
+					it := iter(float64(i)*size/screenWidth-size/2+centerX, (screenHeight-float64(j))*size/screenHeight-size/2+centerY)
+					p := 4 * (i + j*screenWidth)
+					if it < maxIt {
+						rgba := m.palette[it]
+						m.offscreenPix[p] = rgba.R
+						m.offscreenPix[p+1] = rgba.G
+						m.offscreenPix[p+2] = rgba.B
+						m.offscreenPix[p+3] = rgba.A
+					} else {
+						m.offscreenPix[p] = 0
+						m.offscreenPix[p+1] = 0
+						m.offscreenPix[p+2] = 0
+						m.offscreenPix[p+3] = 0
+					}
 				}
 			}
-		}(j)
+		}()
 	}
+
+	for j := 0; j < screenHeight; j++ {
+		rowJobs <- j
+	}
+	close(rowJobs)
+
 	wg.Wait()
 	m.duration = time.Since(start)
 }
